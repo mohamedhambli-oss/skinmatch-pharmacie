@@ -4239,7 +4239,9 @@ function go(screen){
     }
   }
   // ── Garde d'authentification : bloquer l'accès aux écrans protégés sans compte ──
-  var PROTECTED_SCREENS = ['scan-product','dashboard','profile'];
+  // scan-product reste accessible sans compte : usage comptoir, cohérent avec
+  // la promesse "aucun compte nécessaire" affichée sur l'écran d'accueil.
+  var PROTECTED_SCREENS = ['dashboard','profile'];
   if (PROTECTED_SCREENS.indexOf(screen) !== -1 && !window._currentUser) {
     _showLoginRequired(screen);
     return; // ne rend PAS la page protégée, l'utilisateur reste sur l'écran courant
@@ -8469,7 +8471,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var visibleScreens = [];
     allScreens.forEach(function(s){ if (!s.classList.contains('hidden')) visibleScreens.push(s.id); });
     // Si plusieurs écrans visibles, ou si un écran protégé est visible sans user connecté
-    var PROTECTED = ['sc-profile','sc-dashboard','sc-scan-product','sc-settings'];
+    var PROTECTED = ['sc-profile','sc-dashboard','sc-settings'];
     var hasProtectedVisible = visibleScreens.some(function(id){ return PROTECTED.indexOf(id) !== -1; });
     var noUser = !window._currentUser;
     if (visibleScreens.length === 0 || (hasProtectedVisible && noUser) || visibleScreens.length > 1) {
@@ -11566,7 +11568,7 @@ function navTo(screen) {
   if (typeof stopBarcodeCamera === 'function') stopBarcodeCamera();
   
   // ── Garde d'authentification pour les onglets protégés ──
-  var PROTECTED = ['scan-product','dashboard','profile'];
+  var PROTECTED = ['dashboard','profile'];
   if (PROTECTED.indexOf(screen) !== -1 && !window._currentUser) {
     _showLoginRequired(screen);
     return;
