@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SkinMatch — Capture INCI</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0E1216;--mut:#6B7784;--line:#DDE3E8;--bg:#EEF2F5;--card:#fff;
+--ok:#1E6B4E;--okbg:#E6F4EC;--warn:#9A6606;--warnbg:#FDF4E3;--err:#C02B2B;--errbg:#FCEEEE;--acc:#C4726A}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:14px 12px 120px}
+.mono{font-family:'IBM Plex Mono',monospace}
+header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:9px;margin-bottom:12px}
+h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.02em}
+.sub{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:14px;margin-bottom:11px}
+h2{font-size:12.5px;margin:0 0 9px;font-weight:600}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:#FAFCFD;color:var(--ink)}
+textarea{font-family:'IBM Plex Mono',monospace;font-size:11px;resize:vertical}
+label.lb{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+button{font-family:inherit;cursor:pointer}
+.btn{padding:11px 15px;border:0;border-radius:8px;background:var(--ink);color:#fff;font-size:13.5px;font-weight:600}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.btn:disabled{opacity:.35}
+.row{display:flex;gap:8px}.row>*{flex:1}
+
+/* caméra */
+#cam{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;max-height:56vh}
+#video{width:100%;height:100%;object-fit:cover;display:block}
+#guide{position:absolute;inset:9% 6%;border:2px dashed rgba(255,255,255,.65);border-radius:8px;pointer-events:none}
+#guide span{position:absolute;bottom:-25px;left:0;right:0;text-align:center;color:#fff;font-size:11px;text-shadow:0 1px 4px #000}
+.shutter{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:50}
+.shot{width:64px;height:64px;border-radius:50%;background:var(--acc);border:4px solid #fff;box-shadow:0 0 0 2px var(--acc);flex-shrink:0}
+.shot:active{transform:scale(.93)}
+.shot:disabled{background:#C3CCD4;box-shadow:0 0 0 2px #C3CCD4}
+.meter{flex:1;font-size:12px;color:var(--mut);line-height:1.35}
+.meter b{display:block;font-family:'IBM Plex Mono',monospace;font-size:19px;color:var(--ink);font-weight:600}
+
+/* file */
+.item{display:flex;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:7px;align-items:flex-start}
+.item img{width:52px;height:66px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#E7ECF0}
+.item .body{flex:1;min-width:0}
+.nm{font-size:13.5px;font-weight:600;line-height:1.25}
+.mk{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);margin-top:1px}
+.meta{font-size:11.5px;color:var(--mut);margin-top:4px}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;white-space:nowrap}
+.t-wait{background:#EEF2F5;color:var(--mut)}.t-run{background:#EDF1FC;color:#2B4FC0}
+.t-ok{background:var(--okbg);color:var(--ok)}.t-err{background:var(--errbg);color:var(--err)}
+.alg{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.alg span{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--warnbg);color:var(--warn)}
+.alg span.ban{background:var(--err);color:#fff}
+.mini{background:none;border:0;color:var(--mut);font-size:11px;text-decoration:underline;padding:2px 0}
+.hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin:7px 0 0}
+.warn{background:var(--warnbg);border:1px solid #EDDCB4;border-radius:9px;padding:11px;font-size:12px;color:#6B4A08;line-height:1.5}
+.hide{display:none}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:11px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 4px;text-align:center}
+.stat b{display:block;font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600}
+.stat span{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Capture INCI</h1>
+  <div class="sub">SkinMatch</div>
+</header>
+
+<!-- ── Réglages ── -->
+<div class="card" id="setup">
+  <h2>Clé Gemini</h2>
+  <input type="password" id="key" placeholder="AIza…" autocomplete="off">
+  <p class="hint">Enregistrée uniquement sur cet appareil, jamais transmise ailleurs qu'à Google. Utilise la clé restreinte, pas l'ancienne.</p>
+  <div class="row" style="margin-top:9px">
+    <button class="btn" id="save-key">Enregistrer</button>
+    <button class="btn sec" id="hide-setup">Masquer</button>
+  </div>
+</div>
+
+<div class="warn" id="tip">
+  Photographie <b>le dos de la boîte</b>, panneau d'ingrédients bien à plat et net.
+  Enchaîne les photos sans attendre : l'analyse tourne en arrière-plan.
+  Si le code-barres est visible sur la même face, il sera relevé aussi.
+</div>
+
+<!-- ── Caméra ── -->
+<div class="card">
+  <div id="cam" class="hide">
+    <video id="video" playsinline muted></video>
+    <div id="guide"><span>Cadre la liste d'ingrédients</span></div>
+  </div>
+  <div id="cam-off">
+    <button class="btn" id="start-cam" style="width:100%">Ouvrir la caméra</button>
+    <p class="hint">Si la caméra est refusée, utilise l'import de photos ci-dessous.</p>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <button class="btn sec" id="pick">Importer des photos</button>
+    <button class="btn sec" id="switch">Changer d'objectif</button>
+  </div>
+  <input type="file" id="file" accept="image/*" multiple class="hide">
+</div>
+
+<!-- ── Compteurs ── -->
+<div class="stats">
+  <div class="stat"><b id="s-tot">0</b><span>photos</span></div>
+  <div class="stat"><b id="s-wait">0</b><span>en file</span></div>
+  <div class="stat"><b id="s-ok">0</b><span>lues</span></div>
+  <div class="stat"><b id="s-alg">0</b><span>allergènes</span></div>
+</div>
+
+<div class="row" style="margin-bottom:11px">
+  <button class="btn" id="export">Exporter</button>
+  <button class="btn sec" id="clear">Tout effacer</button>
+</div>
+
+<div id="list"></div>
+
+<div class="card hide" id="out">
+  <h2>Code à coller dans index.html</h2>
+  <textarea id="code" rows="12" readonly></textarea>
+  <div class="row" style="margin-top:8px">
+    <button class="btn sec" id="copy">Copier</button>
+    <button class="btn sec" id="dl">Télécharger le JSON</button>
+  </div>
+</div>
+</div>
+
+<div class="shutter">
+  <button class="shot" id="shot" disabled aria-label="Prendre une photo"></button>
+  <div class="meter">
+    <b id="m-count">0</b>
+    <span id="m-state">Ouvre la caméra pour commencer</span>
+  </div>
+</div>
+
+<script>
+/* ══════════════ Référentiel allergènes — annexe III, règlement (UE) 2023/1545 ══════════════
+   Version compacte du référentiel utilisé dans l'application, corrigendum 2025 inclus. */
+var ANNEXE=[["Amyl Cinnamal",["amyl cinnamal"]],["Amylcinnamyl Alcohol",["amylcinnamyl alcohol"]],
+["Anise Alcohol",["anise alcohol","anisyl alcohol"]],["Benzyl Alcohol",["benzyl alcohol"]],
+["Benzyl Benzoate",["benzyl benzoate"]],["Benzyl Cinnamate",["benzyl cinnamate"]],
+["Benzyl Salicylate",["benzyl salicylate"]],["Cinnamal",["cinnamal"]],["Cinnamyl Alcohol",["cinnamyl alcohol"]],
+["Citral",["citral","geranial","neral"]],["Citronellol",["citronellol"]],["Coumarine",["coumarin"]],
+["Eugénol",["eugenol"]],["Farnesol",["farnesol"]],["Géraniol",["geraniol"]],["Hexyl Cinnamal",["hexyl cinnamal"]],
+["Hydroxycitronellal",["hydroxycitronellal"]],["Isoeugénol",["isoeugenol"]],["Limonène",["limonene"]],
+["Linalool",["linalool"]],["Methyl 2-Octynoate",["methyl 2-octynoate"]],
+["Alpha-Isomethyl Ionone",["isomethyl ionone"]],["Mousse de chêne",["evernia prunastri"]],
+["Mousse d'arbre",["evernia furfuracea"]],
+["Acétyl Cédrène",["acetyl cedrene"]],["Amyl Salicylate",["amyl salicylate"]],["Anéthole",["anethole"]],
+["Benzaldéhyde",["benzaldehyde"]],["Benzyl Isoeugénol",["benzyl isoeugenol"]],
+["Bêta-Caryophyllène",["caryophyllene"]],["Camphre",["camphor"]],["Carvone",["carvone"]],
+["Dimethyl Phenethyl Acetate",["dimethyl phenethyl acetate"]],["Eugenyl Acetate",["eugenyl acetate"]],
+["Geranyl Acetate",["geranyl acetate"]],["Hexadécanolactone",["hexadecanolactone"]],
+["Galaxolide",["hexamethylindanopyran","galaxolide"]],["Isoeugenyl Acetate",["isoeugenyl acetate"]],
+["Linalyl Acetate",["linalyl acetate"]],["Menthol",["menthol"]],["6-Méthyl Coumarine",["methyl coumarin"]],
+["Salicylate de méthyle",["methyl salicylate"]],["Pinène",["pinene"]],
+["3-Propylidenephthalide",["propylidenephthalide"]],["Cétones de rose",["damascenone","damascone","rose ketone"]],
+["Salicylaldéhyde",["salicylaldehyde"]],["Santalol",["santalol"]],["Sclaréol",["sclareol"]],
+["Alpha-Terpinène",["terpinene"]],["Terpinéol",["terpineol"]],["Terpinolène",["terpinolene"]],
+["Iso E Super",["tetramethyl acetyloctahydronaphthalen"]],["Trimethylbenzenepropanol",["trimethylbenzenepropanol"]],
+["Térébenthine",["turpentine"]],["Vanilline",["vanillin"]],
+["Ylang-ylang",["cananga odorata"]],["Cèdre de l'Atlas",["cedrus atlantica"]],
+["Cannelle de Chine",["cinnamomum cassia"]],["Cannelle de Ceylan",["cinnamomum zeylanicum"]],
+["Bergamote",["citrus aurantium bergamia"]],["Néroli",["citrus aurantium amara flower","citrus aurantium dulcis flower"]],
+["Zeste d'orange",["citrus aurantium amara peel","citrus aurantium dulcis peel"]],
+["Zeste de citron",["citrus limon peel","citrus medica limonum peel"]],["Eucalyptus",["eucalyptus globulus"]],
+["Girofle",["eugenia caryophyllus"]],["Jasmin",["jasminum"]],["Cèdre de Virginie",["juniperus virginiana"]],
+["Laurier noble",["laurus nobilis leaf"]],["Lavande / Lavandin",["lavandula"]],
+["Lemongrass",["cymbopogon"]],["Verveine odorante",["lippia citriodora"]],["Menthe poivrée",["mentha piperita"]],
+["Menthe verte",["mentha viridis","mentha spicata"]],["Baume du Pérou",["myroxylon pereirae"]],
+["Narcisse",["narcissus"]],["Géranium rosat",["pelargonium graveolens"]],["Pin mugo",["pinus mugo","pinus pumilio"]],
+["Pin nain de Sibérie",["pinus pumila"]],["Patchouli",["pogostemon cablin"]],
+["Rose",["rosa damascena flower","rosa centifolia flower","rosa gallica flower"]],["Bois de santal",["santalum album"]]];
+var INTERDITS=[["Butylphenyl Methylpropional (Lilial)",["butylphenyl methylpropional","lilial"],"Interdit dans l'UE depuis le 1er mars 2022"],
+["Hydroxyisohexyl 3-Cyclohexene Carboxaldehyde (Lyral)",["hydroxyisohexyl 3-cyclohexene","lyral"],"Interdit à la vente dans l'UE depuis le 23 août 2021"]];
+
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9\- ]/g,' ').replace(/\s+/g,' ').trim();}
+function analyser(list){
+ var t=(list||[]).map(norm), res={alg:[],ban:[]};
+ ANNEXE.forEach(function(a){ if(t.some(function(x){return a[1].some(function(v){return x.indexOf(norm(v))>-1;});})) res.alg.push(a[0]); });
+ INTERDITS.forEach(function(b){ if(t.some(function(x){return b[1].some(function(v){return x.indexOf(norm(v))>-1;});})) res.ban.push({l:b[0],d:b[2]}); });
+ return res;
+}
+function eanOk(e){e=String(e||'').replace(/\D/g,'');if(e.length!==13&&e.length!==8)return false;
+ var d=e.split('').map(Number),c=d.pop(),s=0;d.reverse().forEach(function(v,i){s+=v*(i%2===0?3:1);});
+ return (10-(s%10))%10===c;}
+
+/* ══════════════ Stockage : IndexedDB, car les photos dépassent la capacité de localStorage ══════════════ */
+var DB=null;
+function ouvrir(){return new Promise(function(res,rej){
+ var r=indexedDB.open('skinmatch-capture',1);
+ r.onupgradeneeded=function(e){var db=e.target.result;
+  if(!db.objectStoreNames.contains('items')) db.createObjectStore('items',{keyPath:'id'});};
+ r.onsuccess=function(){DB=r.result;res(DB);}; r.onerror=function(){rej(r.error);};});}
+// Si IndexedDB est indisponible (navigation privée, quota, navigateur ancien),
+// l'outil continue de fonctionner : on perd seulement la reprise après fermeture.
+function tx(mode){return DB?DB.transaction('items',mode).objectStore('items'):null;}
+function put(it){return new Promise(function(res){var s=tx('readwrite');if(!s)return res();
+ try{var q=s.put(it);q.onsuccess=res;q.onerror=res;}catch(e){res();}});}
+function tous(){return new Promise(function(res){var s=tx('readonly');if(!s)return res([]);
+ try{var q=s.getAll();q.onsuccess=function(){res(q.result||[]);};q.onerror=function(){res([]);};}catch(e){res([]);}});}
+function vider(){return new Promise(function(res){var s=tx('readwrite');if(!s)return res();
+ try{var q=s.clear();q.onsuccess=res;q.onerror=res;}catch(e){res();}});}
+
+/* ══════════════ Caméra ══════════════ */
+var flux=null, facing='environment', items=[], enCours=0, MAX=2;
+var $=function(id){return document.getElementById(id);};
+
+async function demarrerCam(){
+ try{
+  if(flux) flux.getTracks().forEach(function(t){t.stop();});
+  flux=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,
+    width:{ideal:2560},height:{ideal:1440}},audio:false});
+  $('video').srcObject=flux; await $('video').play();
+  $('cam').classList.remove('hide'); $('cam-off').classList.add('hide');
+  $('shot').disabled=false; maj();
+ }catch(e){ alert("Caméra indisponible : "+e.message+"\n\nUtilise « Importer des photos »."); }
+}
+$('start-cam').onclick=demarrerCam;
+$('switch').onclick=function(){facing=(facing==='environment')?'user':'environment';if(flux)demarrerCam();};
+
+/* Compression : 1600 px de large suffit à la lecture d'un panneau INCI et allège l'envoi. */
+function compresser(source){
+ return new Promise(function(res){
+  var c=document.createElement('canvas'), L=1600;
+  var w=source.videoWidth||source.width, h=source.videoHeight||source.height;
+  var k=Math.min(1,L/Math.max(w,h));
+  c.width=Math.round(w*k); c.height=Math.round(h*k);
+  c.getContext('2d').drawImage(source,0,0,c.width,c.height);
+  res(c.toDataURL('image/jpeg',0.85));
+ });
+}
+
+async function ajouter(dataUrl){
+ var it={id:'p'+Date.now()+Math.random().toString(36).slice(2,6),img:dataUrl,etat:'file',date:Date.now()};
+ items.push(it); await put(it); rendre(); pousser();
+}
+
+$('shot').onclick=async function(){
+ if(!flux) return;
+ $('shot').disabled=true;
+ var d=await compresser($('video'));
+ await ajouter(d);
+ setTimeout(function(){$('shot').disabled=false;},220);   // évite les doubles déclenchements
+};
+$('pick').onclick=function(){$('file').click();};
+$('file').onchange=async function(){
+ var fs=Array.from($('file').files||[]);
+ for(var i=0;i<fs.length;i++){
+  var img=await new Promise(function(res){var im=new Image();im.onload=function(){res(im);};im.src=URL.createObjectURL(fs[i]);});
+  await ajouter(await compresser(img));
+ }
+ $('file').value='';
+};
+
+/* ══════════════ Lecture par le modèle ══════════════ */
+var CLE='';
+try{ CLE=localStorage.getItem('sm_capture_key')||''; $('key').value=CLE; }catch(e){}
+$('save-key').onclick=function(){CLE=$('key').value.trim();
+ try{localStorage.setItem('sm_capture_key',CLE);}catch(e){}
+ $('setup').classList.add('hide'); pousser();};
+$('hide-setup').onclick=function(){$('setup').classList.add('hide');};
+if(CLE) $('setup').classList.add('hide');
+
+var CONSIGNE=[
+"Tu lis la photo de l'emballage d'un produit cosmétique.",
+"Réponds UNIQUEMENT par un objet JSON, sans texte autour, sans balises Markdown.",
+"Champs attendus :",
+'{"nom":"", "marque":"", "contenance":"", "ean":"", "inci":[], "lisible":true, "remarque":""}',
+"Règles strictes :",
+"- inci : la liste des ingrédients EXACTEMENT telle qu'imprimée, un élément par ingrédient, dans l'ordre.",
+"- Ne corrige pas l'orthographe, ne traduis pas, n'ajoute aucun ingrédient absent de l'image.",
+"- Si la liste est coupée ou partiellement illisible, mets lisible=false et explique dans remarque.",
+"- ean : uniquement si un code-barres à 13 chiffres est lisible, sinon chaîne vide.",
+"- Si tu n'es pas certain d'un champ, laisse-le vide plutôt que de deviner."
+].join("\n");
+
+async function lire(it){
+ var b64=it.img.split(',')[1];
+ var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+encodeURIComponent(CLE),{
+  method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({contents:[{parts:[
+    {inline_data:{mime_type:"image/jpeg",data:b64}},
+    {text:CONSIGNE}]}],
+    generationConfig:{temperature:0,maxOutputTokens:2048}})});
+ if(!r.ok){ var t=await r.text(); throw new Error("HTTP "+r.status+" "+t.slice(0,120)); }
+ var j=await r.json();
+ var txt=((((j.candidates||[])[0]||{}).content||{}).parts||[]).map(function(p){return p.text||'';}).join('');
+ txt=txt.replace(/```json|```/g,'').trim();
+ var i=txt.indexOf('{'), k=txt.lastIndexOf('}');
+ if(i<0||k<0) throw new Error("réponse inattendue");
+ return JSON.parse(txt.slice(i,k+1));
+}
+
+async function pousser(){
+ if(!CLE) { maj(); return; }
+ while(enCours<MAX){
+  var it=items.find(function(x){return x.etat==='file';});
+  if(!it) break;
+  it.etat='cours'; enCours++; rendre();
+  (function(it){
+   lire(it).then(async function(d){
+    it.data=d; it.etat='ok';
+    it.res=analyser(d.inci||[]);
+    it.eanOk=d.ean?eanOk(d.ean):null;
+   }).catch(function(e){ it.etat='err'; it.err=e.message; })
+   .then(async function(){ enCours--; await put(it); rendre(); pousser(); });
+  })(it);
+ }
+ maj();
+}
+
+/* ══════════════ Affichage ══════════════ */
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function maj(){
+ var f=items.filter(function(x){return x.etat==='file'||x.etat==='cours';}).length;
+ var o=items.filter(function(x){return x.etat==='ok';}).length;
+ var a=items.reduce(function(n,x){return n+((x.res&&x.res.alg.length)||0);},0);
+ $('s-tot').textContent=items.length; $('s-wait').textContent=f;
+ $('s-ok').textContent=o; $('s-alg').textContent=a;
+ $('m-count').textContent=items.length;
+ $('m-state').textContent = !CLE ? "Renseigne la clé Gemini"
+   : f ? ("Analyse : "+f+" en attente — continue à photographier")
+   : items.length ? "Tout est lu" : "Prêt";
+}
+function rendre(){
+ $('list').innerHTML=items.slice().reverse().map(function(it){
+  var T={file:['t-wait','en file'],cours:['t-run','lecture…'],ok:['t-ok','lu'],err:['t-err','échec']}[it.etat];
+  var d=it.data||{};
+  var corps;
+  if(it.etat==='ok'){
+   var alertes=(it.res.ban||[]).map(function(b){return '<span class="ban">⛔ '+esc(b.l)+'</span>';}).join('')
+     +(it.res.alg||[]).map(function(a){return '<span>'+esc(a)+'</span>';}).join('');
+   corps='<div class="nm">'+(esc(d.nom)||'<i>nom non lu</i>')+'</div>'
+    +'<div class="mk">'+esc(d.marque||'—')+(d.contenance?' · '+esc(d.contenance):'')+'</div>'
+    +'<div class="meta">'+((d.inci||[]).length)+' ingrédients'
+      +(d.ean?' · <span class="mono">'+esc(d.ean)+'</span>'+(it.eanOk?' ✓':' ⚠ code invalide'):' · pas de code-barres')
+      +(d.lisible===false?' · <b style="color:#9A6606">liste incomplète</b>':'')+'</div>'
+    +(alertes?'<div class="alg">'+alertes+'</div>':'')
+    +(d.remarque?'<div class="meta" style="font-style:italic">'+esc(d.remarque)+'</div>':'');
+  } else if(it.etat==='err'){
+   corps='<div class="nm">Échec de lecture</div><div class="meta">'+esc(it.err)+'</div>'
+    +'<button class="mini" onclick="reessayer(\''+it.id+'\')">Réessayer</button>';
+  } else {
+   corps='<div class="nm" style="color:#6B7784">'+(it.etat==='cours'?'Lecture en cours…':'En attente')+'</div>';
+  }
+  return '<div class="item"><img src="'+it.img+'" alt=""><div class="body">'+corps+'</div>'
+   +'<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
+   +'<span class="tag '+T[0]+'">'+T[1]+'</span>'
+   +'<button class="mini" onclick="retirer(\''+it.id+'\')">retirer</button></div></div>';
+ }).join('');
+ maj();
+}
+window.reessayer=function(id){var it=items.find(function(x){return x.id===id;});if(it){it.etat='file';rendre();pousser();}};
+window.retirer=async function(id){items=items.filter(function(x){return x.id!==id;});
+ try{var s=tx('readwrite'); if(s) s.delete(id);}catch(e){} rendre();};
+
+/* ══════════════ Export ══════════════ */
+function slug(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');}
+$('export').onclick=function(){
+ var ok=items.filter(function(x){return x.etat==='ok'&&x.data&&(x.data.inci||[]).length;});
+ if(!ok.length){alert("Aucune fiche lue pour l'instant.");return;}
+ var used={};
+ var lignes=ok.map(function(it){
+  var d=it.data, k='cap-'+(slug(d.marque).slice(0,8)||'x')+'-'+(slug(d.nom).slice(0,16)||'x');
+  while(used[k]) k+='2'; used[k]=1;
+  return '  "'+k+'": {nom:'+JSON.stringify(d.nom||'')+',marque:'+JSON.stringify(d.marque||'')
+   +(d.ean&&it.eanOk?',ean:"'+d.ean+'"':'')
+   +(d.contenance?',contenance:'+JSON.stringify(d.contenance):'')
+   +',comp:'+JSON.stringify(d.inci)+',usage:"",texture:"",ak:[],pq:"",ben:"",app:"",moment:"AM+PM",source:"photo",incomplet:true},';
+ });
+ var js="// Fiches relevées au rayon — "+new Date().toLocaleDateString('fr-FR')+"\n"
+  +"// Compositions lues sur les emballages. Complète usage, pq et ak pour\n"
+  +"// que ces produits entrent dans les recommandations.\n"
+  +lignes.join('\n');
+ $('code').value=js; $('out').classList.remove('hide');
+ try{$('out').scrollIntoView({behavior:'smooth'});}catch(e){}
+ window._json=JSON.stringify(ok.map(function(x){return x.data;}),null,1);
+};
+$('copy').onclick=function(){var t=$('code');t.select();try{document.execCommand('copy');$('copy').textContent='Copié';setTimeout(function(){$('copy').textContent='Copier';},1500);}catch(e){}};
+$('dl').onclick=function(){
+ var b=new Blob([window._json||'[]'],{type:'application/json'});
+ var a=document.createElement('a');a.href=URL.createObjectURL(b);
+ a.download='inci-'+new Date().toISOString().slice(0,10)+'.json';a.click();};
+$('clear').onclick=async function(){
+ if(!confirm("Effacer toutes les photos et les fiches lues ?"))return;
+ items=[]; await vider(); rendre(); $('out').classList.add('hide');};
+
+/* ══════════════ Reprise après fermeture ══════════════ */
+(async function(){
+ try{
+  await ouvrir();
+  items=(await tous()).sort(function(a,b){return a.date-b.date;});
+  items.forEach(function(it){ if(it.etat==='cours') it.etat='file'; });  // reprise des lectures interrompues
+  rendre();
+  if(items.some(function(x){return x.etat==='file';})) pousser();
+ }catch(e){
+  // Sans persistance, on prévient : fermer l'onglet perdra les photos non exportées.
+  var w=document.getElementById('tip');
+  if(w) w.innerHTML+='<br><br><b>Attention :</b> ce navigateur n\'autorise pas la sauvegarde locale. Ne ferme pas l\'onglet avant d\'avoir exporté.';
+  rendre();
+ }
+})();
+window.addEventListener('beforeunload',function(e){
+ if(items.some(function(x){return x.etat==='file'||x.etat==='cours';})){e.preventDefault();e.returnValue='';}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Équivalent Netlify de firebase.json — nécessaire si le site est déposé sur Netlify.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+/*.html
+  Cache-Control: no-cache
+
+/pharma-index.json
+  Cache-Control: public, max-age=86400
