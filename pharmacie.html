@@ -4312,7 +4312,7 @@ function setLang(l){
     } else {
       go('welcome');
       setTimeout(function(){ if (typeof applyWelcomeLang === 'function') applyWelcomeLang(); }, 50);
-      setTimeout(function(){ if (typeof showRegionModal === 'function') showRegionModal(); }, 300);
+      setTimeout(function(){ if (typeof resolveRegionOrAsk === 'function') resolveRegionOrAsk(); }, 300);
     }
   } catch(e) {
     console.error('setLang error:', e);
@@ -8921,6 +8921,54 @@ function getInitials(nom, marque) {
   }
   return (nom || 'SK').substring(0, 2).toUpperCase();
 }
+// Correspondance code pays (géolocalisation) → région de l'app
+var COUNTRY_TO_REGION = {
+  FR:'fr', BE:'be', CH:'ch', DE:'de', ES:'es', GB:'gb', IT:'gb', NL:'gb',
+  DZ:'dz', MA:'ma', TN:'ma', LY:'ma',
+  SA:'gb', AE:'gb', QA:'gb', LB:'gb', EG:'gb',
+  US:'gb', CA:'gb', MX:'es', BR:'es',
+  SN:'gb', CI:'gb', CM:'gb',
+  JP:'gb', KR:'gb', AU:'gb'
+};
+
+// Résout la région via géolocalisation si autorisée ; sinon demande à l'utilisateur.
+// N'auto-valide que les régions réellement actives (ACTIVE dans buildRegionList) :
+// pour un pays hors périmètre, on préfère demander plutôt que d'assigner une région "Bientôt".
+function resolveRegionOrAsk() {
+  if (localStorage.getItem('skinmatch_region')) return;
+  if (!navigator.geolocation) { showRegionModal(); return; }
+  var settled = false;
+  var fallbackTimer = setTimeout(function(){
+    if (settled) return;
+    settled = true;
+    showRegionModal();
+  }, 6000);
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    if (settled) return;
+    fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + pos.coords.latitude + '&longitude=' + pos.coords.longitude + '&localityLanguage=fr')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
+        var region = data && data.countryCode && COUNTRY_TO_REGION[data.countryCode];
+        if (region && ['fr','dz'].indexOf(region) !== -1) { setRegion(region); }
+        else { showRegionModal(); }
+      })
+      .catch(function(){
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
+        showRegionModal();
+      });
+  }, function() {
+    if (settled) return;
+    settled = true;
+    clearTimeout(fallbackTimer);
+    showRegionModal();
+  }, { timeout: 5000, enableHighAccuracy: false });
+}
+
 function showRegionModal() {
   // Si région déjà mémorisée, ne pas redemander
   if (localStorage.getItem('skinmatch_region')) return;
