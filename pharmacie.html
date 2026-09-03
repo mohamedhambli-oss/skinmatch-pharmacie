@@ -8931,42 +8931,41 @@ var COUNTRY_TO_REGION = {
   JP:'gb', KR:'gb', AU:'gb'
 };
 
-// Résout la région via géolocalisation si autorisée ; sinon demande à l'utilisateur.
-// N'auto-valide que les régions réellement actives (ACTIVE dans buildRegionList) :
-// pour un pays hors périmètre, on préfère demander plutôt que d'assigner une région "Bientôt".
+// App pharmacie = tablette fixe installée en officine : la géolocalisation est
+// obligatoire, pas de repli vers le choix manuel du pays.
 function resolveRegionOrAsk() {
   if (localStorage.getItem('skinmatch_region')) return;
-  if (!navigator.geolocation) { showRegionModal(); return; }
-  var settled = false;
-  var fallbackTimer = setTimeout(function(){
-    if (settled) return;
-    settled = true;
-    showRegionModal();
-  }, 6000);
+  attemptMandatoryGeolocation();
+}
+
+function attemptMandatoryGeolocation() {
+  if (!navigator.geolocation) { showLocationRequiredScreen(); return; }
   navigator.geolocation.getCurrentPosition(function(pos) {
-    if (settled) return;
     fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + pos.coords.latitude + '&longitude=' + pos.coords.longitude + '&localityLanguage=fr')
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if (settled) return;
-        settled = true;
-        clearTimeout(fallbackTimer);
         var region = data && data.countryCode && COUNTRY_TO_REGION[data.countryCode];
-        if (region && ['fr','dz'].indexOf(region) !== -1) { setRegion(region); }
-        else { showRegionModal(); }
+        if (region && ['fr','dz'].indexOf(region) !== -1) {
+          setRegion(region);
+          hideLocationRequiredScreen();
+        } else {
+          // Pays hors périmètre supporté : ne pas assigner une région "Bientôt" en silence.
+          showLocationRequiredScreen();
+        }
       })
-      .catch(function(){
-        if (settled) return;
-        settled = true;
-        clearTimeout(fallbackTimer);
-        showRegionModal();
-      });
+      .catch(function(){ showLocationRequiredScreen(); });
   }, function() {
-    if (settled) return;
-    settled = true;
-    clearTimeout(fallbackTimer);
-    showRegionModal();
-  }, { timeout: 5000, enableHighAccuracy: false });
+    showLocationRequiredScreen();
+  }, { timeout: 8000, enableHighAccuracy: false });
+}
+
+function showLocationRequiredScreen() {
+  var m = document.getElementById('location-required-modal');
+  if (m) m.style.display = 'flex';
+}
+function hideLocationRequiredScreen() {
+  var m = document.getElementById('location-required-modal');
+  if (m) m.style.display = 'none';
 }
 
 function showRegionModal() {
@@ -12610,6 +12609,17 @@ setTimeout(refreshRegionBadge, 1200);
     <!-- Liste custom mobile-friendly -->
     <div id="region-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
 
+  </div>
+</div>
+
+<!-- MODALE LOCALISATION OBLIGATOIRE (borne pharmacie fixe) -->
+<div id="location-required-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#FDF8F5;z-index:10000;align-items:center;justify-content:center">
+  <div style="max-width:380px;padding:32px 28px;text-align:center">
+    <div style="font-size:44px;margin-bottom:16px">📍</div>
+    <h2 style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#3D2B1F;margin-bottom:10px">Localisation requise</h2>
+    <p style="font-size:14px;color:#8B6F5E;line-height:1.6;margin-bottom:22px">Cette application est installée sur une tablette fixe en pharmacie : la localisation doit être autorisée pour afficher les bons produits, sans démarche supplémentaire.</p>
+    <button id="location-retry-btn" onclick="attemptMandatoryGeolocation()" style="width:100%;padding:14px;border-radius:50px;border:none;background:#C4726A;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;margin-bottom:14px">Réessayer</button>
+    <p style="font-size:11px;color:#B0958F;line-height:1.6">Si rien ne se passe : Réglages iPad → Confidentialité et sécurité → Service de localisation → Safari (ou l'app) → Autoriser. Puis réessayez.</p>
   </div>
 </div>
 
