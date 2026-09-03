@@ -1829,6 +1829,9 @@ h2{font-family:var(--serif);font-size:20px;font-weight:700;margin-bottom:3px}
 // ─── LANGUE (doit être en premier) ───────────────────────────────────────────
 let LANG = 'fr';
 let REGION = 'fr';
+// Tablette fixe en pharmacie : seul l'admin (?admin=1), au moment de la config,
+// peut choisir le pays manuellement. Les clients ne voient ni le badge ni le réglage.
+var IS_ADMIN = /[?&]admin=1/.test(location.search);
 
 const T = {
   fr:{
@@ -9056,7 +9059,12 @@ function confirmRegion() {
 var REGION_FLAGS = {fr:'🇫🇷',dz:'🇩🇿',ma:'🇲🇦',gb:'🇬🇧',es:'🇪🇸',de:'🇩🇪',be:'🇧🇪',ch:'🇨🇭',other:'🌍'};
 function refreshRegionBadge() {
   var badge = document.getElementById('region-badge');
-  if (badge) badge.textContent = (REGION_FLAGS[REGION] || '🌍');
+  if (!badge) return;
+  badge.textContent = (REGION_FLAGS[REGION] || '🌍');
+  // Visible et cliquable uniquement en mode admin (?admin=1) : la région est
+  // déterminée par géolocalisation pour les clients, jamais par un tap accidentel.
+  badge.style.display = IS_ADMIN ? '' : 'none';
+  badge.style.pointerEvents = IS_ADMIN ? '' : 'none';
 }
 function setRegion(r) {
   REGION = r;
@@ -11717,10 +11725,10 @@ function renderSettings() {
     },
     {
       title: isEN ? '🌍 Language & Region' : '🌍 Langue & Région',
+      // "Région" réservé à l'admin (?admin=1) : tablette fixe, pays déterminé par géolocalisation.
       items: [
         { label: isEN ? 'Language' : 'Langue', value: currentLang, action: 'changeLangRegion()' },
-        { label: isEN ? 'Region' : 'Région', value: currentRegion, action: 'changeRegionOnly()' },
-      ]
+      ].concat(IS_ADMIN ? [{ label: isEN ? 'Region' : 'Région', value: currentRegion, action: 'changeRegionOnly()' }] : [])
     },
     {
       title: isEN ? '🔔 Notifications' : '🔔 Notifications',
