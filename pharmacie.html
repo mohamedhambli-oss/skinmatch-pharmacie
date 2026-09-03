@@ -14735,10 +14735,13 @@ function ev(nom, detail){
 /* ── Remise à zéro entre deux clientes ──
    Le questionnaire produit des données de santé (type de peau, allergies,
    grossesse). Sur un appareil partagé, elles ne doivent pas survivre à la
-   session. Seules les statistiques agrégées sont conservées. */
+   session. Seules les statistiques agrégées sont conservées.
+   L'acceptation des CGU/confidentialité concerne la tablette elle-même
+   (pas la santé du client) : elle est conservée pour ne pas la refaire
+   valider à chaque personne qui passe au comptoir. */
 function reinitialiser(recharger){
   try {
-    var garder = [STATS_KEY, "skinmatch_lang"];
+    var garder = [STATS_KEY, "skinmatch_lang", "skinmatch_terms_accepted"];
     var aSupprimer = [];
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
