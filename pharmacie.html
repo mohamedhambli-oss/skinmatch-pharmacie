@@ -8918,41 +8918,28 @@ var COUNTRY_TO_REGION = {
   JP:'gb', KR:'gb', AU:'gb'
 };
 
-// App pharmacie = tablette fixe installée en officine : la géolocalisation est
-// obligatoire, pas de repli vers le choix manuel du pays.
+// App pharmacie = tablette fixe installée en officine : on tente la géolocalisation
+// pour éviter de demander le pays, mais on ne bloque jamais l'app si elle échoue —
+// ce n'est pas critique, la région reste alors sur sa valeur par défaut ('fr').
 function resolveRegionOrAsk() {
   if (localStorage.getItem('skinmatch_region')) return;
   attemptMandatoryGeolocation();
 }
 
 function attemptMandatoryGeolocation() {
-  if (!navigator.geolocation) { showLocationRequiredScreen(); return; }
+  if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(function(pos) {
     fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + pos.coords.latitude + '&longitude=' + pos.coords.longitude + '&localityLanguage=fr')
       .then(function(r){ return r.json(); })
       .then(function(data){
         var region = data && data.countryCode && COUNTRY_TO_REGION[data.countryCode];
-        if (region && ['fr','dz'].indexOf(region) !== -1) {
-          setRegion(region);
-          hideLocationRequiredScreen();
-        } else {
-          // Pays hors périmètre supporté : ne pas assigner une région "Bientôt" en silence.
-          showLocationRequiredScreen();
-        }
+        if (region && ['fr','dz'].indexOf(region) !== -1) { setRegion(region); }
+        // Pays non détecté ou hors périmètre : on ne fait rien, l'app continue normalement.
       })
-      .catch(function(){ showLocationRequiredScreen(); });
+      .catch(function(){});
   }, function() {
-    showLocationRequiredScreen();
+    // Refus ou erreur de géolocalisation : pas grave, l'app continue normalement.
   }, { timeout: 8000, enableHighAccuracy: false });
-}
-
-function showLocationRequiredScreen() {
-  var m = document.getElementById('location-required-modal');
-  if (m) m.style.display = 'flex';
-}
-function hideLocationRequiredScreen() {
-  var m = document.getElementById('location-required-modal');
-  if (m) m.style.display = 'none';
 }
 
 function showRegionModal() {
