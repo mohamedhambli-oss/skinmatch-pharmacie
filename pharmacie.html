@@ -4270,12 +4270,10 @@ function go(screen){
   if(screen==='scan-product') {
     setTimeout(function(){ startBarcodeCamera(); }, 100);
   }
-  // Afficher/cacher la nav
-  var navScreens = ['welcome','result','settings','scan-product','articles','dashboard','profile'];
+  // Borne pharmacie : un seul chemin (questionnaire → résultat → envoi par mail),
+  // la barre d'onglets n'a pas lieu d'être.
   var nav = document.getElementById('bottom-nav');
-  if (nav) nav.style.display = navScreens.indexOf(screen) !== -1 ? 'block' : 'none';
-  // Activer le bon onglet
-  if (typeof updateNav === 'function') updateNav(screen);
+  if (nav) nav.style.display = 'none';
 }
 
 // Aller à la routine complète depuis le dashboard : on RECONSTRUIT le contenu
@@ -11611,9 +11609,10 @@ function navTo(screen) {
 
 function updateNav(screen) {
   var isEN = LANG === 'en';
-  var navVisible = NAV_SCREENS.indexOf(screen) !== -1 || screen === 'welcome';
+  // Borne pharmacie : parcours unique, pas de barre d'onglets.
+  var navVisible = false;
   var nav = document.getElementById('bottom-nav');
-  if (nav) nav.style.display = navVisible ? 'block' : 'none';
+  if (nav) nav.style.display = 'none';
   
   // Mettre à jour les labels
   var labels = {
